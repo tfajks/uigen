@@ -1,13 +1,55 @@
 "use client";
 
+import { useState } from "react";
 import { Message } from "ai";
 import { cn } from "@/lib/utils";
-import { User, Bot, Loader2 } from "lucide-react";
+import { User, Bot, Loader2, Copy, Check } from "lucide-react";
 import { MarkdownRenderer } from "./MarkdownRenderer";
 
 interface MessageListProps {
   messages: Message[];
   isLoading?: boolean;
+}
+
+const EXAMPLE_PROMPTS = [
+  "A responsive card component with image, title and action button",
+  "A form with email and password fields and validation",
+  "A navigation bar with logo, links and mobile hamburger menu",
+  "A data table with sortable columns and pagination",
+];
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-md hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600"
+      title="Copy message"
+    >
+      {copied ? (
+        <Check className="h-3.5 w-3.5 text-emerald-500" />
+      ) : (
+        <Copy className="h-3.5 w-3.5" />
+      )}
+    </button>
+  );
+}
+
+function extractTextContent(message: Message): string {
+  if (message.parts) {
+    return message.parts
+      .filter((p) => p.type === "text")
+      .map((p) => (p as { type: "text"; text: string }).text)
+      .join("\n");
+  }
+  return message.content ?? "";
 }
 
 export function MessageList({ messages, isLoading }: MessageListProps) {
@@ -17,8 +59,34 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
         <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-50 mb-4 shadow-sm">
           <Bot className="h-7 w-7 text-blue-600" />
         </div>
-        <p className="text-neutral-900 font-semibold text-lg mb-2">Start a conversation to generate React components</p>
-        <p className="text-neutral-500 text-sm max-w-sm">I can help you create buttons, forms, cards, and more</p>
+        <p className="text-neutral-900 font-semibold text-lg mb-2">
+          Start a conversation to generate React components
+        </p>
+        <p className="text-neutral-500 text-sm max-w-sm mb-6">
+          I can help you create buttons, forms, cards, and more
+        </p>
+        <div className="grid grid-cols-1 gap-2 w-full max-w-md">
+          {EXAMPLE_PROMPTS.map((prompt) => (
+            <button
+              key={prompt}
+              className="text-left px-4 py-2.5 rounded-lg border border-neutral-200 bg-white hover:bg-neutral-50 hover:border-blue-300 transition-all text-sm text-neutral-600 shadow-sm"
+              onClick={() => {
+                const textarea = document.querySelector("textarea");
+                if (textarea) {
+                  const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                    window.HTMLTextAreaElement.prototype,
+                    "value"
+                  )?.set;
+                  nativeInputValueSetter?.call(textarea, prompt);
+                  textarea.dispatchEvent(new Event("input", { bubbles: true }));
+                  textarea.focus();
+                }
+              }}
+            >
+              {prompt}
+            </button>
+          ))}
+        </div>
       </div>
     );
   }
@@ -30,7 +98,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
           <div
             key={message.id || message.content}
             className={cn(
-              "flex gap-4",
+              "flex gap-4 group",
               message.role === "user" ? "justify-end" : "justify-start"
             )}
           >
@@ -41,17 +109,21 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                 </div>
               </div>
             )}
-            
-            <div className={cn(
-              "flex flex-col gap-2 max-w-[85%]",
-              message.role === "user" ? "items-end" : "items-start"
-            )}>
-              <div className={cn(
-                "rounded-xl px-4 py-3",
-                message.role === "user" 
-                  ? "bg-blue-600 text-white shadow-sm" 
-                  : "bg-white text-neutral-900 border border-neutral-200 shadow-sm"
-              )}>
+
+            <div
+              className={cn(
+                "flex flex-col gap-1 max-w-[85%]",
+                message.role === "user" ? "items-end" : "items-start"
+              )}
+            >
+              <div
+                className={cn(
+                  "rounded-xl px-4 py-3",
+                  message.role === "user"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-white text-neutral-900 border border-neutral-200 shadow-sm"
+                )}
+              >
                 <div className="text-sm">
                   {message.parts ? (
                     <>
@@ -59,7 +131,9 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                         switch (part.type) {
                           case "text":
                             return message.role === "user" ? (
-                              <span key={partIndex} className="whitespace-pre-wrap">{part.text}</span>
+                              <span key={partIndex} className="whitespace-pre-wrap">
+                                {part.text}
+                              </span>
                             ) : (
                               <MarkdownRenderer
                                 key={partIndex}
@@ -69,15 +143,23 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                             );
                           case "reasoning":
                             return (
-                              <div key={partIndex} className="mt-3 p-3 bg-white/50 rounded-md border border-neutral-200">
-                                <span className="text-xs font-medium text-neutral-600 block mb-1">Reasoning</span>
+                              <div
+                                key={partIndex}
+                                className="mt-3 p-3 bg-white/50 rounded-md border border-neutral-200"
+                              >
+                                <span className="text-xs font-medium text-neutral-600 block mb-1">
+                                  Reasoning
+                                </span>
                                 <span className="text-sm text-neutral-700">{part.reasoning}</span>
                               </div>
                             );
-                          case "tool-invocation":
+                          case "tool-invocation": {
                             const tool = part.toolInvocation;
                             return (
-                              <div key={partIndex} className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 bg-neutral-50 rounded-lg text-xs font-mono border border-neutral-200">
+                              <div
+                                key={partIndex}
+                                className="inline-flex items-center gap-2 mt-2 px-3 py-1.5 bg-neutral-50 rounded-lg text-xs font-mono border border-neutral-200"
+                              >
                                 {tool.state === "result" && tool.result ? (
                                   <>
                                     <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
@@ -91,6 +173,7 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                                 )}
                               </div>
                             );
+                          }
                           case "source":
                             return (
                               <div key={partIndex} className="mt-2 text-xs text-neutral-500">
@@ -98,7 +181,9 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                               </div>
                             );
                           case "step-start":
-                            return partIndex > 0 ? <hr key={partIndex} className="my-3 border-neutral-200" /> : null;
+                            return partIndex > 0 ? (
+                              <hr key={partIndex} className="my-3 border-neutral-200" />
+                            ) : null;
                           default:
                             return null;
                         }
@@ -128,8 +213,14 @@ export function MessageList({ messages, isLoading }: MessageListProps) {
                   ) : null}
                 </div>
               </div>
+
+              {message.role === "assistant" && (
+                <div className="flex items-center px-1">
+                  <CopyButton text={extractTextContent(message)} />
+                </div>
+              )}
             </div>
-            
+
             {message.role === "user" && (
               <div className="flex-shrink-0">
                 <div className="w-9 h-9 rounded-lg bg-blue-600 shadow-sm flex items-center justify-center">
