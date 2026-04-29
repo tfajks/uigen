@@ -16,7 +16,7 @@ test("renders with placeholder text", () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const textarea = screen.getByPlaceholderText("Describe the React component you want to create...");
   expect(textarea).toBeDefined();
 });
@@ -30,7 +30,7 @@ test("displays the input value", () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const textarea = screen.getByDisplayValue("Test input value");
   expect(textarea).toBeDefined();
 });
@@ -45,10 +45,10 @@ test("calls handleInputChange when typing", async () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const textarea = screen.getByPlaceholderText("Describe the React component you want to create...");
   await userEvent.type(textarea, "Hello");
-  
+
   expect(handleInputChange).toHaveBeenCalled();
 });
 
@@ -62,10 +62,10 @@ test("calls handleSubmit when form is submitted", async () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const form = screen.getByRole("textbox").closest("form")!;
   fireEvent.submit(form);
-  
+
   expect(handleSubmit).toHaveBeenCalledOnce();
 });
 
@@ -79,10 +79,10 @@ test("submits form when Enter is pressed without shift", async () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const textarea = screen.getByRole("textbox");
   fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
-  
+
   expect(handleSubmit).toHaveBeenCalledOnce();
 });
 
@@ -96,10 +96,10 @@ test("does not submit form when Enter is pressed with shift", async () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const textarea = screen.getByRole("textbox");
   fireEvent.keyDown(textarea, { key: "Enter", shiftKey: true });
-  
+
   expect(handleSubmit).not.toHaveBeenCalled();
 });
 
@@ -112,7 +112,7 @@ test("disables textarea when isLoading is true", () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const textarea = screen.getByRole("textbox");
   expect(textarea).toHaveProperty("disabled", true);
 });
@@ -126,7 +126,7 @@ test("disables submit button when isLoading is true", () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const submitButton = screen.getByRole("button");
   expect(submitButton).toHaveProperty("disabled", true);
 });
@@ -140,7 +140,7 @@ test("disables submit button when input is empty", () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const submitButton = screen.getByRole("button");
   expect(submitButton).toHaveProperty("disabled", true);
 });
@@ -154,7 +154,7 @@ test("disables submit button when input contains only whitespace", () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const submitButton = screen.getByRole("button");
   expect(submitButton).toHaveProperty("disabled", true);
 });
@@ -168,13 +168,13 @@ test("enables submit button when input has content and not loading", () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const submitButton = screen.getByRole("button");
   expect(submitButton).toHaveProperty("disabled", false);
 });
 
-test("applies correct CSS classes based on loading state", () => {
-  const { rerender } = render(
+test("applies correct CSS classes to submit button", () => {
+  render(
     <MessageInput
       input="Test"
       handleInputChange={vi.fn()}
@@ -183,11 +183,14 @@ test("applies correct CSS classes based on loading state", () => {
     />
   );
 
-  let submitButton = screen.getByRole("button");
+  const submitButton = screen.getByRole("button");
   expect(submitButton.className).toContain("disabled:opacity-40");
   expect(submitButton.className).toContain("hover:bg-blue-50");
+  expect(submitButton.className).toContain("disabled:cursor-not-allowed");
+});
 
-  rerender(
+test("shows Loader2 spinner icon when isLoading is true", () => {
+  render(
     <MessageInput
       input="Test"
       handleInputChange={vi.fn()}
@@ -196,13 +199,14 @@ test("applies correct CSS classes based on loading state", () => {
     />
   );
 
-  submitButton = screen.getByRole("button");
-  expect(submitButton.className).toContain("disabled:cursor-not-allowed");
-  expect(submitButton.className).toContain("disabled:opacity-40");
+  const submitButton = screen.getByRole("button");
+  const svg = submitButton.querySelector("svg");
+  // Loader2 spinner has animate-spin class
+  expect(svg?.getAttribute("class")).toContain("animate-spin");
 });
 
-test("applies pulse animation to send icon when loading", () => {
-  const { rerender } = render(
+test("shows Send icon when not loading", () => {
+  render(
     <MessageInput
       input="Test"
       handleInputChange={vi.fn()}
@@ -211,20 +215,10 @@ test("applies pulse animation to send icon when loading", () => {
     />
   );
 
-  let sendIcon = screen.getByRole("button").querySelector("svg");
-  expect(sendIcon?.getAttribute("class")).not.toContain("animate-pulse");
-
-  rerender(
-    <MessageInput
-      input="Test"
-      handleInputChange={vi.fn()}
-      handleSubmit={vi.fn()}
-      isLoading={true}
-    />
-  );
-
-  sendIcon = screen.getByRole("button").querySelector("svg");
-  expect(sendIcon?.getAttribute("class")).toContain("text-neutral-300");
+  const submitButton = screen.getByRole("button");
+  const svg = submitButton.querySelector("svg");
+  // Send icon does not have animate-spin
+  expect(svg?.getAttribute("class")).not.toContain("animate-spin");
 });
 
 test("textarea has correct styling classes", () => {
@@ -236,13 +230,53 @@ test("textarea has correct styling classes", () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const textarea = screen.getByRole("textbox");
   expect(textarea.className).toContain("min-h-[80px]");
   expect(textarea.className).toContain("max-h-[200px]");
   expect(textarea.className).toContain("resize-none");
   expect(textarea.className).toContain("focus:ring-2");
-  expect(textarea.className).toContain("focus:ring-blue-500/10");
+});
+
+test("disables submit button when input exceeds 2000 characters", () => {
+  const longInput = "a".repeat(2001);
+  const mockProps = {
+    input: longInput,
+    handleInputChange: vi.fn(),
+    handleSubmit: vi.fn(),
+    isLoading: false,
+  };
+
+  render(<MessageInput {...mockProps} />);
+
+  const submitButton = screen.getByRole("button");
+  expect(submitButton).toHaveProperty("disabled", true);
+});
+
+test("shows character count in footer", () => {
+  const mockProps = {
+    input: "hello",
+    handleInputChange: vi.fn(),
+    handleSubmit: vi.fn(),
+    isLoading: false,
+  };
+
+  render(<MessageInput {...mockProps} />);
+
+  expect(screen.getByText("5/2000")).toBeDefined();
+});
+
+test("shows loading hint text when isLoading is true", () => {
+  render(
+    <MessageInput
+      input=""
+      handleInputChange={vi.fn()}
+      handleSubmit={vi.fn()}
+      isLoading={true}
+    />
+  );
+
+  expect(screen.getByText("Generating response…")).toBeDefined();
 });
 
 test("submit button click triggers form submission", async () => {
@@ -255,9 +289,9 @@ test("submit button click triggers form submission", async () => {
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const submitButton = screen.getByRole("button");
   await userEvent.click(submitButton);
-  
+
   expect(handleSubmit).toHaveBeenCalledOnce();
 });
