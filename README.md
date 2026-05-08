@@ -2,8 +2,6 @@
 
 AI-powered React component generator. Describe a component in natural language, see it rendered live.
 
-![UIGen screenshot](chapter3.png)
-
 ## What it does
 
 - Chat with Claude to generate React components
