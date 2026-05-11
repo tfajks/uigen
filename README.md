@@ -1,4 +1,4 @@
-# UIGen
+# UIGen Application
 
 AI-powered React component generator. Describe a component in natural language, see it rendered live.
 
