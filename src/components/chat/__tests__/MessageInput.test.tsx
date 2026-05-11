@@ -201,7 +201,7 @@ test("applies correct CSS classes based on loading state", () => {
   expect(submitButton.className).toContain("disabled:opacity-40");
 });
 
-test("applies pulse animation to send icon when loading", () => {
+test("shows spinner when loading and send icon when not loading", () => {
   const { rerender } = render(
     <MessageInput
       input="Test"
@@ -211,8 +211,8 @@ test("applies pulse animation to send icon when loading", () => {
     />
   );
 
-  let sendIcon = screen.getByRole("button").querySelector("svg");
-  expect(sendIcon?.getAttribute("class")).not.toContain("animate-pulse");
+  let icon = screen.getByRole("button").querySelector("svg");
+  expect(icon?.getAttribute("class")).not.toContain("animate-spin");
 
   rerender(
     <MessageInput
@@ -223,20 +223,20 @@ test("applies pulse animation to send icon when loading", () => {
     />
   );
 
-  sendIcon = screen.getByRole("button").querySelector("svg");
-  expect(sendIcon?.getAttribute("class")).toContain("text-neutral-300");
+  icon = screen.getByRole("button").querySelector("svg");
+  expect(icon?.getAttribute("class")).toContain("animate-spin");
 });
 
 test("textarea has correct styling classes", () => {
   const mockProps = {
-    input: "",
+    input: "Valid input",
     handleInputChange: vi.fn(),
     handleSubmit: vi.fn(),
     isLoading: false,
   };
 
   render(<MessageInput {...mockProps} />);
-  
+
   const textarea = screen.getByRole("textbox");
   expect(textarea.className).toContain("min-h-[80px]");
   expect(textarea.className).toContain("max-h-[200px]");
